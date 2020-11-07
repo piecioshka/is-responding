@@ -1,0 +1,9 @@
+coverage/
+
+.editorconfig
+.prettierignore
+.eslintignore
+.gitignore
+
+*.md
+*.yml

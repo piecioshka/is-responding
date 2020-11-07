@@ -1,0 +1,65 @@
+{
+  "private": true,
+  "name": "is-respond",
+  "description": "A tool to find active endpoint use an enumeration strategy",
+  "version": "0.0.0",
+  "license": "MIT",
+  "author": {
+    "name": "Piotr Kowalski",
+    "email": "piecioshka@gmail.com",
+    "url": "https://piecioshka.pl/"
+  },
+  "scripts": {
+    "clear": "rm -rf coverage/ .nyc_output/",
+    "clear:all": "rm -rf node_modules/ && npm run clear",
+    "test": "jest --rootDir test/specs/",
+    "test:watch": "npm run test -- --watch",
+    "coverage": "npm run test -- --coverage",
+    "lint": "eslint .",
+    "postversion": "git push --tags"
+  },
+  "dependencies": {
+    "colors": "^1.4.0",
+    "ora": "^5.1.0",
+    "superagent": "^6.1.0",
+    "yargs": "^15.4.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^25.2.3",
+    "eslint": "^7.13.0",
+    "eslint-config-piecioshka": "^2.0.3",
+    "eslint-plugin-smells": "^1.0.1",
+    "husky": "^4.3.0",
+    "jest": "^26.6.3",
+    "lint-staged": "^10.5.1",
+    "prettier": "^2.1.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:piecioshka/is-respond.git"
+  },
+  "engines": {
+    "node": ">=8"
+  },
+  "files": [
+    "bin",
+    "src",
+    "package.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "enumeration",
+    "scanner",
+    "test",
+    "url",
+    "service",
+    "active",
+    "activity",
+    "respond",
+    "random",
+    "integer"
+  ],
+  "main": "./src/index.js",
+  "bin": "./bin/cli.js"
+}
