@@ -1,5 +1,4 @@
 {
-  "private": true,
   "name": "is-respond",
   "description": "A tool to find active endpoint use an enumeration strategy",
   "version": "0.0.0",
