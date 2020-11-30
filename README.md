@@ -1,9 +1,9 @@
-# is-respond
+# is-responding
 
-[![node version](https://img.shields.io/node/v/is-respond.svg)](https://www.npmjs.com/package/is-respond)
-[![npm version](https://badge.fury.io/js/is-respond.svg)](https://badge.fury.io/js/is-respond)
-[![downloads count](https://img.shields.io/npm/dt/is-respond.svg)](https://www.npmjs.com/package/is-respond)
-[![github-ci](https://github.com/piecioshka/is-respond/workflows/Testing/badge.svg?branch=master)](https://github.com/piecioshka/is-respond/actions/)
+[![node version](https://img.shields.io/node/v/is-responding.svg)](https://www.npmjs.com/package/is-responding)
+[![npm version](https://badge.fury.io/js/is-responding.svg)](https://badge.fury.io/js/is-responding)
+[![downloads count](https://img.shields.io/npm/dt/is-responding.svg)](https://www.npmjs.com/package/is-responding)
+[![github-ci](https://github.com/piecioshka/is-responding/workflows/Testing/badge.svg?branch=master)](https://github.com/piecioshka/is-responding/actions/)
 
 🛠 A tool to find active endpoint use an enumeration strategy
 
@@ -16,13 +16,13 @@ If you would like to test services like that, this tool is for you!
 ## Installation
 
 ```bash
-npm install -g is-respond
+npm install -g is-responding
 ```
 
 ## CLI
 
 ```bash
-is-respond -u "https://example.org/{{integer}}/foo?bar=1" -f 123 -t 234 -v
+is-responding -u "https://example.org/{{integer}}/foo?bar=1" -f 123 -t 234 -v
 ```
 
 ```text
@@ -47,7 +47,7 @@ Options:
 ## 🤝 Contributing
 
 Contributions, issues and feature requests are welcome!<br />
-Feel free to check [issues page](https://github.com/piecioshka/is-respond/issues/).
+Feel free to check [issues page](https://github.com/piecioshka/is-responding/issues/).
 
 ## Show your support
 

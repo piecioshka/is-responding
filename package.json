@@ -1,5 +1,5 @@
 {
-  "name": "is-respond",
+  "name": "is-responding",
   "description": "A tool to find active endpoint use an enumeration strategy",
   "version": "0.0.0",
   "license": "MIT",
@@ -35,7 +35,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:piecioshka/is-respond.git"
+    "url": "git@github.com:piecioshka/is-responding.git"
   },
   "engines": {
     "node": ">=8"
