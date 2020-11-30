@@ -1,7 +1,7 @@
 {
   "name": "is-responding",
   "description": "A tool to find active endpoint use an enumeration strategy",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "MIT",
   "author": {
     "name": "Piotr Kowalski",
