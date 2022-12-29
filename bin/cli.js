@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * @see: https://www.npmjs.com/package/yargs
- */
 const yargs = require('yargs');
 const { start } = require('../src');
 
