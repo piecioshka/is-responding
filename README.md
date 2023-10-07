@@ -5,13 +5,15 @@
 [![downloads count](https://img.shields.io/npm/dt/is-responding.svg)](https://www.npmjs.com/package/is-responding)
 [![github-ci](https://github.com/piecioshka/is-responding/workflows/Testing/badge.svg?branch=master)](https://github.com/piecioshka/is-responding/actions/)
 
-🛠 A tool to find active endpoint use an enumeration strategy
+🛠 A tool to find active endpoints using an enumeration strategy
+
+> Give a ⭐️ if this project helped you!
 
 ## Motivation
 
 A lot of services use the next integer in parameters.
 
-If you would like to test services like that, this tool is for you!
+If you want to test services like that, this tool is for you!
 
 ## Installation
 
@@ -48,10 +50,6 @@ Options:
 
 Contributions, issues and feature requests are welcome!<br />
 Feel free to check [issues page](https://github.com/piecioshka/is-responding/issues/).
-
-## Show your support
-
-Give a ⭐️ if this project helped you!
 
 ## Related
 
