@@ -3,7 +3,7 @@
 [![node version](https://img.shields.io/node/v/is-responding.svg)](https://www.npmjs.com/package/is-responding)
 [![npm version](https://badge.fury.io/js/is-responding.svg)](https://badge.fury.io/js/is-responding)
 [![downloads count](https://img.shields.io/npm/dt/is-responding.svg)](https://www.npmjs.com/package/is-responding)
-[![github-ci](https://github.com/piecioshka/is-responding/workflows/Testing/badge.svg?branch=master)](https://github.com/piecioshka/is-responding/actions/)
+[![github-ci](https://github.com/piecioshka/is-responding/actions/workflows/testing.yml/badge.svg)](https://github.com/piecioshka/is-responding/actions/workflows/testing.yml)
 
 🛠 A tool to find active endpoints using an enumeration strategy
 
@@ -45,11 +45,6 @@ Options:
   --verbose, -v  Display endpoints which refused
   --help         Show help                                             [boolean]
 ```
-
-## 🤝 Contributing
-
-Contributions, issues and feature requests are welcome!<br />
-Feel free to check [issues page](https://github.com/piecioshka/is-responding/issues/).
 
 ## Related
 
