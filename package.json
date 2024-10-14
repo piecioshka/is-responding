@@ -35,7 +35,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:piecioshka/is-responding.git"
+    "url": "git+ssh://git@github.com/piecioshka/is-responding.git"
   },
   "engines": {
     "node": ">=8"
@@ -60,5 +60,7 @@
     "integer"
   ],
   "main": "./src/index.js",
-  "bin": "./bin/cli.js"
+  "bin": {
+    "is-responding": "bin/cli.js"
+  }
 }
