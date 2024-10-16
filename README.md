@@ -3,6 +3,7 @@
 [![node version](https://img.shields.io/node/v/is-responding.svg)](https://www.npmjs.com/package/is-responding)
 [![npm version](https://badge.fury.io/js/is-responding.svg)](https://badge.fury.io/js/is-responding)
 [![downloads count](https://img.shields.io/npm/dt/is-responding.svg)](https://www.npmjs.com/package/is-responding)
+[![size](https://packagephobia.com/badge?p=is-responding)](https://packagephobia.com/result?p=is-responding)
 [![license](https://img.shields.io/npm/l/is-responding.svg)](https://piecioshka.mit-license.org)
 [![github-ci](https://github.com/piecioshka/is-responding/actions/workflows/testing.yml/badge.svg)](https://github.com/piecioshka/is-responding/actions/workflows/testing.yml)
 
