@@ -1,6 +1,6 @@
 {
   "name": "is-responding",
-  "description": "A tool to find active endpoint use an enumeration strategy",
+  "description": "🔨 A tool to find active endpoint use an enumeration strategy",
   "version": "1.0.1",
   "license": "MIT",
   "author": {
@@ -14,8 +14,7 @@
     "test": "jest --rootDir test/specs/",
     "test:watch": "npm run test -- --watch",
     "coverage": "npm run test -- --coverage",
-    "lint": "eslint .",
-    "postversion": "git push --tags"
+    "lint": "eslint ."
   },
   "dependencies": {
     "colors": "^1.4.0",

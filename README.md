@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/npm/l/is-responding.svg)](https://piecioshka.mit-license.org)
 [![github-ci](https://github.com/piecioshka/is-responding/actions/workflows/testing.yml/badge.svg)](https://github.com/piecioshka/is-responding/actions/workflows/testing.yml)
 
-🛠 A tool to find active endpoints using an enumeration strategy
+🔨 A tool to find active endpoints using an enumeration strategy
 
 > Give a ⭐️ if this project helped you!
 
