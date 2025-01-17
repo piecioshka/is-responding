@@ -1,6 +1,6 @@
 # is-responding
 
-[![cli-available](https://badgen.net/static/cli/available/?icon=terminal)](https://runkit.com/npm/is-responding)
+[![cli-available](https://badgen.net/static/cli/available/?icon=terminal)](#cli)
 [![node version](https://img.shields.io/node/v/is-responding.svg)](https://www.npmjs.com/package/is-responding)
 [![npm version](https://badge.fury.io/js/is-responding.svg)](https://badge.fury.io/js/is-responding)
 [![downloads count](https://img.shields.io/npm/dt/is-responding.svg)](https://www.npmjs.com/package/is-responding)
