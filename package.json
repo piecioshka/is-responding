@@ -33,7 +33,7 @@
     "url": "git+ssh://git@github.com/piecioshka/is-responding.git"
   },
   "engines": {
-    "node": ">=8"
+    "node": ">=18"
   },
   "files": [
     "bin",
