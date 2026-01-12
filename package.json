@@ -19,7 +19,6 @@
   "dependencies": {
     "colors": "^1.4.0",
     "minimist": "^1.2.8",
-    "ora": "^9.0.0",
     "superagent": "^10.3.0"
   },
   "devDependencies": {

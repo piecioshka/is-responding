@@ -1,5 +1,5 @@
 module.exports = {
-  extends: 'piecioshka',
+  extends: "piecioshka",
 
   // https://eslint.org/docs/user-guide/configuring#specifying-environments
   env: {
@@ -16,19 +16,20 @@ module.exports = {
 
   // https://eslint.org/docs/rules/
   rules: {
-    'max-statements': 'off',
-    'arrow-parens': ['error', 'as-needed'],
-    'no-magic-numbers': 'off',
-    indent: ['error', 2],
-    'require-jsdoc': 'off',
-    'default-case': 'off',
-    'object-curly-newline': 'off',
-    'no-console': 'off',
+    "max-statements": "off",
+    "arrow-parens": ["error", "as-needed"],
+    "no-magic-numbers": "off",
+    indent: ["error", 2],
+    "require-jsdoc": "off",
+    "default-case": "off",
+    "object-curly-newline": "off",
+    "no-console": "off",
+    quotes: "off",
 
-    'smells/no-switch': 'off',
-    'smells/no-complex-switch-case': 'error',
-    'smells/no-setinterval': 'off',
-    'smells/no-this-assign': 'error',
+    "smells/no-switch": "off",
+    "smells/no-complex-switch-case": "error",
+    "smells/no-setinterval": "off",
+    "smells/no-this-assign": "error",
   },
 
   // List of global variables.
@@ -39,8 +40,8 @@ module.exports = {
     ecmaVersion: 2018,
 
     // Support syntax ES2015 Import/Export
-    sourceType: 'module',
+    sourceType: "module",
   },
 
-  plugins: ['smells'],
+  plugins: ["smells"],
 };
