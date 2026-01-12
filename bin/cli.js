@@ -1,28 +1,56 @@
 #!/usr/bin/env node
 
-const yargs = require('yargs');
+const minimist = require('minimist');
 const { start } = require('../src');
+const { version } = require('../package.json');
 
-const argv = yargs
-  .option('url', {
-    alias: 'u',
-    describe: 'URL with {{parameter}}',
-  })
-  .option('from', {
-    alias: 'f',
-    describe: 'Provide an initial value from count should start',
-    default: 0,
-  })
-  .option('to', {
-    alias: 't',
-    describe: 'Provide an last value when count ends',
-    default: 10,
-  })
-  .option('verbose', {
-    alias: 'v',
-    describe: 'Display endpoints which refused',
-  })
-  .demandOption(['url'], 'Please provide url argument to work with this tool')
-  .help().argv;
+const HELP_TEXT = `Options:
+  --version      Show version number                                   [boolean]
+  --url, -u      URL with {{parameter}}                               [required]
+  --from, -f     Provide an initial value from count should start   [default: 0]
+  --to, -t       Provide an last value when count ends             [default: 10]
+  --verbose, -v  Display endpoints which refused
+  --help         Show help                                             [boolean]`;
 
-start(argv);
+function main() {
+  const argv = minimist(process.argv.slice(2), {
+    string: ['url'],
+    boolean: ['help', 'version', 'verbose'],
+    alias: {
+      u: 'url',
+      f: 'from',
+      t: 'to',
+      v: 'verbose',
+    },
+    default: {
+      from: 0,
+      to: 10,
+    },
+  });
+
+  // Handle --help flag
+  if (argv.help) {
+    console.log(HELP_TEXT);
+    return;
+  }
+
+  // Handle --version flag
+  if (argv.version) {
+    console.log(version);
+    return;
+  }
+
+  // Validate required argument
+  if (!argv.url) {
+    console.log(`${HELP_TEXT}
+
+Missing required argument: url
+Please provide url argument to work with this tool`);
+    process.exitCode = 1;
+    return;
+  }
+
+  start(argv);
+}
+
+main();
