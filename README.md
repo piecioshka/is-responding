@@ -10,6 +10,8 @@
 
 🔨 A tool to find active endpoints using an enumeration strategy
 
+![](demo/is-responding.gif)
+
 > Give a ⭐️ if this project helped you!
 
 ## Motivation
