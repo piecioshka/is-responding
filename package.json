@@ -11,10 +11,12 @@
   "scripts": {
     "clear": "rm -rf coverage/",
     "clear:all": "rm -rf node_modules/ && npm run clear",
-    "test": "jest --rootDir test/specs/",
-    "test:watch": "npm run test -- --watch",
-    "coverage": "npm run test -- --coverage",
-    "lint": "eslint ."
+    "check-ts": "tsc --noEmit",
+    "prebuild": "rm -rf dist/ types/",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "colors": "^1.4.0",
@@ -22,11 +24,12 @@
     "superagent": "^10.3.0"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "eslint": "^7.13.0",
-    "eslint-config-piecioshka": "^2.3.7",
-    "eslint-plugin-smells": "^1.0.1",
-    "jest": "^30.2.0"
+    "@types/minimist": "^1.2.5",
+    "@types/node": "^22.10.1",
+    "@types/superagent": "^8.1.9",
+    "@vitest/coverage-v8": "^2.1.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
   },
   "repository": {
     "type": "git",
@@ -37,10 +40,13 @@
   },
   "files": [
     "bin",
-    "src",
+    "dist",
+    "types",
+    "index.js",
     "package.json",
+    "README.md",
     "LICENSE",
-    "README.md"
+    "!**/*.spec.*"
   ],
   "keywords": [
     "cli",
@@ -55,7 +61,8 @@
     "random",
     "integer"
   ],
-  "main": "./src/index.js",
+  "main": "index.js",
+  "types": "types/index.d.ts",
   "bin": {
     "is-responding": "bin/cli.js"
   }
