@@ -63,4 +63,4 @@ is-responding -u "https://example.org/{{integer}}/foo?bar=1" -f 123 -t 234 -v
 
 ## License
 
-[The MIT License](https://piecioshka.mit-license.org) @ 2020
+[The MIT License](https://piecioshka.mit-license.org) @ 2026
