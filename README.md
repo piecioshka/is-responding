@@ -7,6 +7,7 @@
 [![size](https://packagephobia.com/badge?p=is-responding)](https://packagephobia.com/result?p=is-responding)
 [![license](https://img.shields.io/npm/l/is-responding.svg)](https://piecioshka.mit-license.org)
 [![github-ci](https://github.com/piecioshka/is-responding/actions/workflows/testing.yml/badge.svg)](https://github.com/piecioshka/is-responding/actions/workflows/testing.yml)
+[![typescript](https://img.shields.io/badge/built%20with-TypeScript-3178c6.svg)](https://www.typescriptlang.org/)
 
 🔨 A tool to find active endpoints using an enumeration strategy
 
