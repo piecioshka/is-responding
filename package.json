@@ -28,16 +28,16 @@
     "@types/minimist": "^1.2.5",
     "@types/node": "^22.10.1",
     "@types/superagent": "^8.1.9",
-    "@vitest/coverage-v8": "^2.1.5",
+    "@vitest/coverage-v8": "^4.1.11",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.5"
+    "vitest": "^4.1.11"
   },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/piecioshka/is-responding.git"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "files": [
     "bin",
