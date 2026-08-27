@@ -40,21 +40,13 @@ export function getParams(url: string): string[] {
 }
 
 /**
- * Replace `{{parameter}}` placeholders in a URL with the provided values.
+ * Replace `{{parameter}}` placeholders in a URL, substituting each occurrence
+ * (left to right) with the matching entry of `values`. Positional so a URL
+ * with several placeholders of the same type gets distinct values.
  */
-export function applyParams(
-  url: string,
-  data: Record<string, string | number>
-): string {
-  const matches = url.match(PARAMS_REGEXP);
-  if (!matches) {
-    return url;
-  }
-  const compiledUrl = matches.reduce((currentUrl, type) => {
-    const clearType = type.replace(PARAMS_REGEXP, '$1');
-    return currentUrl.replace(type, String(data[clearType]));
-  }, url);
-  return compiledUrl;
+export function applyParams(url: string, values: Array<string | number>): string {
+  let index = 0;
+  return url.replace(PARAMS_REGEXP, () => String(values[index++] ?? ''));
 }
 
 /**
@@ -71,12 +63,10 @@ function filterParams(params: string[]): string[] {
 }
 
 /**
- * Resolve the generator factories for the requested parameters.
+ * Resolve the generator factories for the requested parameters, one per
+ * placeholder, preserving order and duplicates. A URL with two
+ * `{{integer}}` placeholders yields two generators, not one.
  */
 export function getGenerators(params: string[]): GeneratorFactory[] {
-  const supportedParams = filterParams(params);
-  const generators = Object.keys(SUPPORTED_TYPES)
-    .filter((type) => supportedParams.includes(type))
-    .map((type) => SUPPORTED_TYPES[type]);
-  return generators;
+  return filterParams(params).map((param) => SUPPORTED_TYPES[param]);
 }

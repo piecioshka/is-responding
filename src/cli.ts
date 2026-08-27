@@ -15,7 +15,7 @@ const HELP_TEXT = `Options:
 /**
  * Parse CLI arguments and run the enumeration.
  */
-export function main(): void {
+export async function main(): Promise<void> {
   const argv = minimist(process.argv.slice(2), {
     string: ['url'],
     boolean: ['help', 'version', 'verbose'],
@@ -53,10 +53,27 @@ Please provide url argument to work with this tool`);
     return;
   }
 
-  start({
-    url: argv.url,
-    from: Number(argv.from),
-    to: Number(argv.to),
-    verbose: Boolean(argv.verbose),
-  });
+  const from = Number(argv.from);
+  const to = Number(argv.to);
+  if (!Number.isInteger(from) || !Number.isInteger(to)) {
+    console.log('--from and --to must be integers');
+    process.exitCode = 1;
+    return;
+  }
+  if (from > to) {
+    console.log(`--from (${from}) must be less than or equal to --to (${to})`);
+    process.exitCode = 1;
+    return;
+  }
+
+  try {
+    await start({
+      url: argv.url,
+      from,
+      to,
+      verbose: Boolean(argv.verbose),
+    });
+  } catch {
+    process.exitCode = 1;
+  }
 }
