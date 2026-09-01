@@ -30,6 +30,11 @@ describe('generators: getParams', () => {
     expect(getParams('https://example.org/{{integer')).toEqual([]);
     expect(getParams('{{{{a'.repeat(1000))).toEqual([]);
   });
+
+  it('does not treat line terminators as part of a placeholder', () => {
+    expect(getParams('https://example.org/{{a\nb}}')).toEqual([]);
+    expect(getParams('https://example.org/{{a\rb}}')).toEqual([]);
+  });
 });
 
 describe('generators: applyParams', () => {
@@ -49,6 +54,11 @@ describe('generators: applyParams', () => {
     expect(applyParams('https://example.org/{{integer', { integer: 5 })).toBe(
       'https://example.org/{{integer'
     );
+  });
+
+  it('leaves malformed repeated opening braces untouched', () => {
+    const url = '{{{{a'.repeat(1000);
+    expect(applyParams(url, { a: 'x' })).toBe(url);
   });
 });
 
