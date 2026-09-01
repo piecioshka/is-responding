@@ -38,14 +38,14 @@ describe('generators: getParams', () => {
 });
 
 describe('generators: applyParams', () => {
-  it('replaces every placeholder with the matching value', () => {
+  it('replaces each placeholder positionally with distinct values', () => {
     expect(
-      applyParams('https://example.org/{{integer}}/{{integer}}', { integer: 5 })
-    ).toBe('https://example.org/5/5');
+      applyParams('https://example.org/{{integer}}/{{integer}}', [4, 5])
+    ).toBe('https://example.org/4/5');
   });
 
   it('returns the url unchanged when there is nothing to replace', () => {
-    expect(applyParams('https://example.org/static', {})).toBe(
+    expect(applyParams('https://example.org/static', [])).toBe(
       'https://example.org/static'
     );
   });
@@ -67,6 +67,11 @@ describe('generators: getGenerators', () => {
     const generators = getGenerators(['integer']);
     expect(generators).toHaveLength(1);
     expect(generators[0](0, 2).type).toBe('integer');
+  });
+
+  it('returns one generator per placeholder, keeping duplicates', () => {
+    // A URL with two {{integer}} placeholders must enumerate both dimensions.
+    expect(getGenerators(['integer', 'integer'])).toHaveLength(2);
   });
 
   it('throws when a parameter is not supported', () => {

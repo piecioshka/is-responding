@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const { head } = vi.hoisted(() => ({ head: vi.fn() }));
 
+// superagent returns a chainable request; .timeout() resolves to the response.
+function makeRequest(response: unknown) {
+  return { timeout: () => Promise.resolve(response) };
+}
+
 vi.mock('superagent', () => ({
   default: { head },
 }));
@@ -13,7 +18,7 @@ describe('index: start', () => {
 
   beforeEach(() => {
     head.mockReset();
-    head.mockResolvedValue({ status: 200 });
+    head.mockReturnValue(makeRequest({ status: 200 }));
     logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
   });
@@ -23,8 +28,8 @@ describe('index: start', () => {
     vi.useRealTimers();
   });
 
-  it('warns when the url has no parameters', () => {
-    start({
+  it('warns when the url has no parameters', async () => {
+    await start({
       url: 'https://example.org/static',
       from: 0,
       to: 10,
@@ -37,13 +42,15 @@ describe('index: start', () => {
     expect(head).not.toHaveBeenCalled();
   });
 
-  it('reports unsupported parameter types', () => {
-    start({
-      url: 'https://example.org/{{foo}}',
-      from: 0,
-      to: 10,
-      verbose: false,
-    });
+  it('reports unsupported parameter types', async () => {
+    await expect(
+      start({
+        url: 'https://example.org/{{foo}}',
+        from: 0,
+        to: 10,
+        verbose: false,
+      })
+    ).rejects.toThrow('"foo" is not supported');
 
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('"foo" is not supported')
@@ -67,5 +74,31 @@ describe('index: start', () => {
     expect(head).toHaveBeenCalledTimes(2);
     expect(head).toHaveBeenCalledWith('https://example.org/0/foo');
     expect(head).toHaveBeenCalledWith('https://example.org/1/foo');
+  });
+
+  it('enumerates the cartesian product of two placeholders', async () => {
+    vi.useFakeTimers();
+
+    start({
+      url: 'https://example.org/{{integer}}/{{integer}}',
+      from: 0,
+      to: 1,
+      verbose: false,
+    });
+
+    await vi.runAllTimersAsync();
+
+    // 2 x 2 combinations, each placeholder varied independently.
+    expect(head).toHaveBeenCalledTimes(4);
+    expect(head).toHaveBeenCalledWith('https://example.org/0/0');
+    expect(head).toHaveBeenCalledWith('https://example.org/0/1');
+    expect(head).toHaveBeenCalledWith('https://example.org/1/0');
+    expect(head).toHaveBeenCalledWith('https://example.org/1/1');
+  });
+
+  it('rejects an invalid url template', async () => {
+    await expect(
+      start({ url: 'not a url {{integer}}', from: 0, to: 1, verbose: false })
+    ).rejects.toThrow('Invalid URL');
   });
 });
