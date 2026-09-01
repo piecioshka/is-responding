@@ -1,4 +1,4 @@
-const PARAMS_REGEXP = /\{\{(.+?)\}\}/g;
+const PARAMS_REGEXP = /\{\{([^{}]+)\}\}/g;
 
 /**
  * A single value generator bound to a `from`/`to` range.
