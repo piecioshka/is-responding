@@ -18,6 +18,23 @@ describe('generators: getParams', () => {
   it('returns an empty array when there are no parameters', () => {
     expect(getParams('https://example.org/static')).toEqual([]);
   });
+
+  it('extracts a repeated parameter name once per occurrence', () => {
+    expect(getParams('https://example.org/{{integer}}/{{integer}}')).toEqual([
+      'integer',
+      'integer',
+    ]);
+  });
+
+  it('ignores placeholders that are never closed', () => {
+    expect(getParams('https://example.org/{{integer')).toEqual([]);
+    expect(getParams('{{{{a'.repeat(1000))).toEqual([]);
+  });
+
+  it('does not treat line terminators as part of a placeholder', () => {
+    expect(getParams('https://example.org/{{a\nb}}')).toEqual([]);
+    expect(getParams('https://example.org/{{a\rb}}')).toEqual([]);
+  });
 });
 
 describe('generators: applyParams', () => {
@@ -31,6 +48,17 @@ describe('generators: applyParams', () => {
     expect(applyParams('https://example.org/static', {})).toBe(
       'https://example.org/static'
     );
+  });
+
+  it('leaves placeholders that are never closed untouched', () => {
+    expect(applyParams('https://example.org/{{integer', { integer: 5 })).toBe(
+      'https://example.org/{{integer'
+    );
+  });
+
+  it('leaves malformed repeated opening braces untouched', () => {
+    const url = '{{{{a'.repeat(1000);
+    expect(applyParams(url, { a: 'x' })).toBe(url);
   });
 });
 
