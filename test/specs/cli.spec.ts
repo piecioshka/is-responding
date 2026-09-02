@@ -149,4 +149,38 @@ describe('cli: main', () => {
       expect.objectContaining({ concurrency: 12 }),
     );
   });
+
+  it('exits with 130 when the scan was interrupted', async () => {
+    start.mockResolvedValue({
+      responding: ['x'],
+      checked: 3,
+      silent: 0,
+      elapsed: 12,
+      statuses: { '200': 3 },
+      interrupted: true,
+    });
+
+    await runWith(['-u', 'https://example.org/{{integer}}']);
+
+    expect(process.exitCode).toBe(130);
+  });
+
+  it('passes an abort signal to start', async () => {
+    start.mockResolvedValue({ responding: ['x'], checked: 1 });
+
+    await runWith(['-u', 'https://example.org/{{integer}}']);
+
+    expect(start).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it('leaves no signal handlers behind', async () => {
+    start.mockResolvedValue({ responding: ['x'], checked: 1 });
+    const before = process.listenerCount('SIGINT');
+
+    await runWith(['-u', 'https://example.org/{{integer}}']);
+
+    expect(process.listenerCount('SIGINT')).toBe(before);
+  });
 });

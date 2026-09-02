@@ -80,8 +80,11 @@ Examples:
     is-responding -u "https://example.org/{{integer}}" -t 100 --concurrency 1
 
 Exit codes:
-  0  at least one endpoint responded
-  1  nothing responded, or the arguments were invalid
+    0  at least one endpoint responded
+    1  nothing responded, or the arguments were invalid
+  130  the scan was interrupted with Ctrl+C
+
+Press Ctrl+C to stop early; the report covers whatever was scanned.
 ```
 
 ## Options
@@ -188,9 +191,24 @@ Status breakdown:
   202          1
 ```
 
-Durations are rendered as `842ms` below a second, `2.4s` below a minute and `1m 35s` above. `no response` covers the endpoints that never produced a status at all, such as a connection reset or a timeout.
+Durations are rendered as `842ms` below a second, `2.4s` below a minute and `1m 35s` above. `no response` covers the endpoints that never produced a status at all, such as a connection reset or a timeout. Only the ten most frequent statuses are listed; the rest are summed up as `... and N more`.
 
 The bar and the summary are written only when the output is a terminal; a redirected run emits the result lines and nothing else.
+
+### Stopping early
+
+A long scan does not have to run to the end. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> and the run stops accepting new endpoints, then prints the same report it would have printed on its own, covering everything checked up to that point.
+
+```text
+Interrupted after 23 of 81 endpoints
+Checked 23 endpoints in 2.9s (8.1/s)
+Found 23 responding, 0 silent
+
+Status breakdown:
+  200          23
+```
+
+The exit code is `130`, the shell convention for a run ended by <kbd>Ctrl</kbd>+<kbd>C</kbd>, so a script can tell a stopped scan from an empty one. Pressing it a second time kills the process outright, in case a request refuses to settle.
 
 ### Leading zeros
 
@@ -220,10 +238,11 @@ is-responding -u "https://example.org/{{integer}}" -f -3 -t 0
 
 Useful when calling the tool from a script or a CI job.
 
-| Code | Meaning                                          |
-| ---- | ------------------------------------------------ |
-| `0`  | At least one endpoint responded                  |
-| `1`  | Nothing responded, or the arguments were invalid |
+| Code  | Meaning                                          |
+| ----- | ------------------------------------------------ |
+| `0`   | At least one endpoint responded                  |
+| `1`   | Nothing responded, or the arguments were invalid |
+| `130` | The scan was interrupted with Ctrl+C             |
 
 ```bash
 if is-responding -u "https://example.org/{{integer}}" -f 1 -t 50; then
@@ -319,9 +338,27 @@ console.log(result.checked); // 20
 console.log(result.silent); // 19
 console.log(result.elapsed); // 2417 (milliseconds)
 console.log(result.statuses); // { '200': 1, 'no response': 19 }
+console.log(result.interrupted); // false
 ```
 
-`start()` resolves once every endpoint has been checked. It returns `{ responding, checked, silent, elapsed, statuses }`, or `null` when the URL template could not be enumerated.
+`start()` resolves once every endpoint has been checked. It returns `{ responding, checked, silent, elapsed, statuses, interrupted }`, or `null` when the URL template could not be enumerated.
+
+Pass an `AbortSignal` to stop a scan from your own code. The returned report covers whatever was checked before the abort, exactly as it does for <kbd>Ctrl</kbd>+<kbd>C</kbd>:
+
+```js
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 5000);
+
+const result = await start({
+  url: 'https://example.org/{{integer}}',
+  from: 1,
+  to: 100000,
+  verbose: false,
+  signal: controller.signal,
+});
+
+console.log(result.interrupted); // true
+```
 
 ## Related
 
