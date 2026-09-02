@@ -146,6 +146,26 @@ Two placeholders side by side behave the same way - `{{integer}}{{integer}}` ove
 
 <!-- prettier-ignore-end -->
 
+### One placeholder or two?
+
+Every placeholder shares the same `--from`/`--to`, so reach for a second one only when both positions really do span that range. A fixed-width number needs `--pad`, not a second placeholder:
+
+```bash
+# 31 requests: 01, 02 ... 31
+is-responding -u "https://example.org/day-{{integer}}.pdf" -f 1 -t 31 --pad 2
+
+# 961 requests: 0101, 0102 ... 3131, most of them meaningless
+is-responding -u "https://example.org/day-{{integer}}{{integer}}.pdf" -f 1 -t 31 --pad 2
+```
+
+When two positions need different ranges, such as a month and a day, keep one of them outside the template and loop:
+
+```bash
+for month in 01 02 03; do
+  is-responding -u "https://example.org/$month{{integer}}2026.pdf" -f 1 -t 31 --pad 2
+done
+```
+
 ### Parallel requests
 
 Five requests are kept in flight at once. Each worker takes the next address as soon as its own finishes, so one slow endpoint holds up a single slot instead of the whole run.
@@ -208,7 +228,7 @@ Status breakdown:
   200          23
 ```
 
-The exit code is `130`, the shell convention for a run ended by <kbd>Ctrl</kbd>+<kbd>C</kbd>, so a script can tell a stopped scan from an empty one. Pressing it a second time kills the process outright, in case a request refuses to settle.
+The exit code is `130`, the shell convention for a run ended by <kbd>Ctrl</kbd>+<kbd>C</kbd>, so a script can tell a stopped scan from an empty one. The report appears straight away: requests already in flight get a moment to finish, and anything still hanging is abandoned rather than holding the summary back. Pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> again kills the process outright.
 
 ### Leading zeros
 
