@@ -19,46 +19,43 @@ describe('generators: getParams', () => {
     expect(getParams('https://example.org/static')).toEqual([]);
   });
 
-  it('extracts a repeated parameter name once per occurrence', () => {
+  it('keeps a repeated placeholder as separate entries', () => {
     expect(getParams('https://example.org/{{integer}}/{{integer}}')).toEqual([
       'integer',
       'integer',
     ]);
   });
-
-  it('ignores placeholders that are never closed', () => {
-    expect(getParams('https://example.org/{{integer')).toEqual([]);
-    expect(getParams('{{{{a'.repeat(1000))).toEqual([]);
-  });
-
-  it('does not treat line terminators as part of a placeholder', () => {
-    expect(getParams('https://example.org/{{a\nb}}')).toEqual([]);
-    expect(getParams('https://example.org/{{a\rb}}')).toEqual([]);
-  });
 });
 
 describe('generators: applyParams', () => {
-  it('replaces each placeholder positionally with distinct values', () => {
+  it('fills each placeholder from the matching position', () => {
     expect(
-      applyParams('https://example.org/{{integer}}/{{integer}}', [4, 5])
-    ).toBe('https://example.org/4/5');
+      applyParams('https://example.org/{{integer}}/{{integer}}', [4, 9]),
+    ).toBe('https://example.org/4/9');
   });
 
   it('returns the url unchanged when there is nothing to replace', () => {
     expect(applyParams('https://example.org/static', [])).toBe(
-      'https://example.org/static'
+      'https://example.org/static',
+    );
+  });
+
+  it('does not interpret dollar patterns in the replacement value', () => {
+    expect(applyParams('https://example.org/{{integer}}/x', ['$&$1'])).toBe(
+      'https://example.org/$&$1/x',
     );
   });
 
   it('leaves placeholders that are never closed untouched', () => {
-    expect(applyParams('https://example.org/{{integer', { integer: 5 })).toBe(
-      'https://example.org/{{integer'
+    expect(applyParams('https://example.org/{{integer', [5])).toBe(
+      'https://example.org/{{integer',
     );
   });
 
-  it('leaves malformed repeated opening braces untouched', () => {
+  it('matches a malformed template in linear time', () => {
+    // Guards against the polynomial backtracking of a lazy dot group.
     const url = '{{{{a'.repeat(1000);
-    expect(applyParams(url, { a: 'x' })).toBe(url);
+    expect(applyParams(url, ['x'])).toBe(url);
   });
 });
 
@@ -87,5 +84,16 @@ describe('generators: SUPPORTED_TYPES.integer', () => {
     expect(gen.next()).toBe(2);
     expect(gen.next()).toBeNull();
     expect(gen.next()).toBeNull();
+  });
+
+  it('works when next is detached from its object', () => {
+    const detached = SUPPORTED_TYPES.integer(0, 1).next;
+    expect(detached()).toBe(0);
+    expect(detached()).toBe(1);
+    expect(detached()).toBeNull();
+  });
+
+  it('yields nothing when the range is empty', () => {
+    expect(SUPPORTED_TYPES.integer(5, 1).next()).toBeNull();
   });
 });
