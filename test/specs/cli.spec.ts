@@ -122,4 +122,31 @@ describe('cli: main', () => {
 
     expect(start).toHaveBeenCalledWith(expect.objectContaining({ pad: 3 }));
   });
+
+  it('rejects a concurrency below one', async () => {
+    await runWith(['-u', 'https://example.org/{{integer}}', '-c', '0']);
+
+    expect(start).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('defaults to five parallel requests', async () => {
+    start.mockResolvedValue({ responding: ['x'], checked: 1 });
+
+    await runWith(['-u', 'https://example.org/{{integer}}']);
+
+    expect(start).toHaveBeenCalledWith(
+      expect.objectContaining({ concurrency: 5 }),
+    );
+  });
+
+  it('passes --concurrency through to start', async () => {
+    start.mockResolvedValue({ responding: ['x'], checked: 1 });
+
+    await runWith(['-u', 'https://example.org/{{integer}}', '-c', '12']);
+
+    expect(start).toHaveBeenCalledWith(
+      expect.objectContaining({ concurrency: 12 }),
+    );
+  });
 });

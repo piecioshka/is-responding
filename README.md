@@ -13,17 +13,23 @@
 
 <!-- prettier-ignore-end -->
 
+<!-- Social preview: assets/og-image.png (1200x630) -->
+
 🔨 A tool to find active endpoints using an enumeration strategy
 
 ![](demo/is-responding.gif)
 
 > Give a ⭐️ if this project helped you!
 
-## Motivation
+## What it does
 
-A lot of services use the next integer in parameters.
+Plenty of services put a plain counter in the URL: `/invoice/1042`, `/photo/007.jpg`, `/status/204`. Point `is-responding` at such an address with the counter replaced by `{{integer}}`, give it a range, and it sends a `HEAD` request to every address in that range and prints the ones that answered.
 
-If you want to test services like that, this tool is for you!
+```bash
+is-responding -u "https://example.org/invoice/{{integer}}" -f 1000 -t 1100
+```
+
+Five requests run in parallel by default, silent endpoints are skipped, and the exit code tells a script whether anything was found.
 
 ## CLI
 
@@ -40,26 +46,37 @@ npx is-responding -u "https://example.org/{{integer}}"
 ```
 
 ```bash
-is-responding -h
+is-responding --help
 ```
 
 ```text
 Options:
-  --version      Show version number                                   [boolean]
-  --url, -u      URL with {{parameter}}                               [required]
-  --from, -f     Provide an initial value from count should start   [default: 0]
-  --to, -t       Provide an last value when count ends             [default: 10]
-  --pad, -p      Pad values with leading zeros, e.g. 3 gives 007  [default: 0]
-  --timeout      Milliseconds before a request is abandoned    [default: 10000]
-  --verbose, -v  Display endpoints which refused
-  --help         Show help                                             [boolean]
+  --version          Show version number                               [boolean]
+  --url, -u          URL with {{parameter}}                           [required]
+  --from, -f         Value the enumeration starts at                [default: 0]
+  --to, -t           Value the enumeration ends at                 [default: 10]
+  --pad, -p          Pad values with leading zeros, 3 gives 007     [default: 0]
+  --concurrency, -c  Requests kept in flight at once                [default: 5]
+  --timeout          Milliseconds before a request is abandoned [default: 10000]
+  --verbose, -v      Display endpoints which refused
+  --help             Show help                                         [boolean]
 ```
 
+## Options
+
+| Option | Short | Default | Meaning |
+| --- | --- | --- | --- |
+| `--url` | `-u` | - | URL template containing at least one `{{integer}}`. Required. |
+| `--from` | `-f` | `0` | First value of the range, inclusive. May be negative. |
+| `--to` | `-t` | `10` | Last value of the range, inclusive. |
+| `--pad` | `-p` | `0` | Width to pad values to with leading zeros. `0` disables padding. |
+| `--concurrency` | `-c` | `5` | How many requests may be in flight at the same time. |
+| `--timeout` | - | `10000` | Milliseconds before a single request is given up on. |
+| `--verbose` | `-v` | off | Also print the endpoints that refused, with the reason. |
+
+Every numeric option must be a whole number, and the run stops with exit code `1` if one is not.
+
 ## Usage
-
-### How it works
-
-The tool takes one URL template, swaps the `{{...}}` placeholder for every value in a range, sends a `HEAD` request to each resulting address and reports the ones that answered.
 
 ### Placeholders
 
@@ -76,7 +93,7 @@ A placeholder is written as `{{type}}` - double curly braces around a **supporte
 
 <!-- prettier-ignore-end -->
 
-A URL without any placeholder is rejected too, because there would be nothing to enumerate.
+A URL without any placeholder is rejected as well, because there would be nothing to enumerate. So is a template that is not a valid `http`/`https` address once the placeholders are filled.
 
 ### Repeating a placeholder
 
@@ -104,6 +121,23 @@ Two placeholders side by side behave the same way - `{{integer}}{{integer}}` ove
 
 <!-- prettier-ignore-end -->
 
+### Parallel requests
+
+Five requests are kept in flight at once. Each worker takes the next address as soon as its own finishes, so one slow endpoint holds up a single slot instead of the whole run.
+
+```bash
+is-responding -u "https://example.org/{{integer}}" -f 1 -t 500 --concurrency 20
+```
+
+Raise it to finish sooner, lower it to go easy on the service. `--concurrency 1` sends one request at a time, which keeps the output in range order.
+
+<!-- prettier-ignore-start -->
+
+> [!NOTE]
+> Results are printed as they arrive, so with parallel requests the order does not follow the range. Use `--concurrency 1` when you want the output sorted.
+
+<!-- prettier-ignore-end -->
+
 ### Leading zeros
 
 Some services expect a fixed-width number, like `/photo/007.jpg`. Use `--pad` (`-p`) to set that width:
@@ -122,7 +156,7 @@ Values already wider than the padding are left alone (`--pad 2` keeps `1000` as 
 
 ### Range
 
-`--from` and `--to` are inclusive and may be negative. Both have to be numbers, and `--from` must not be greater than `--to`; otherwise the run stops immediately with exit code `1`.
+`--from` and `--to` are inclusive and may be negative. `--from` must not be greater than `--to`.
 
 ```bash
 is-responding -u "https://example.org/{{integer}}" -f -3 -t 0
@@ -145,39 +179,50 @@ fi
 
 ## Examples
 
-### ➡️ Use case: Start making request
+### ➡️ Use case: Find the live endpoints in a range
 
 ```bash
-is-responding -u "https://example.org/{{integer}}/foo?bar=1" -f 123 -t 234 -v
+is-responding -u "https://httpbin.org/status/{{integer}}" -f 200 -t 204
 ```
 
 ```text
 🚀 Enumeration started...
-[20] 200: https://example.org/20/foo?bar=1
-[98] 200: https://example.org/98/foo?bar=1
+[200] https://httpbin.org/status/200 200: https://httpbin.org/status/200
+[201] https://httpbin.org/status/201 201: https://httpbin.org/status/201
+[202] https://httpbin.org/status/202 202: https://httpbin.org/status/202
+[203] https://httpbin.org/status/203 203: https://httpbin.org/status/203
+[204] https://httpbin.org/status/204 204: https://httpbin.org/status/204
 ✅ Enumeration completed
 ```
 
+Each line shows the enumerated value in brackets, the address that was probed, and the status it answered with.
+
 ### ➡️ Use case: See why endpoints were skipped
 
-Without `--verbose` only responding endpoints are printed. Add `-v` to also see the failures with their status and message.
+Without `--verbose` a silent endpoint leaves no trace. Add `-v` to print the failures too, with their status and message.
 
 ```bash
-is-responding -u "https://example.org/{{integer}}" -f 1 -t 5 -v
+is-responding -u "https://httpbin.org/status/{{integer}}" -f 198 -t 200 -v
+```
+
+```text
+🚀 Enumeration started...
+[198] https://httpbin.org/status/198 		undefined: socket hang up
+[199] https://httpbin.org/status/199 		undefined: socket hang up
+[200] https://httpbin.org/status/200 200: https://httpbin.org/status/200
+✅ Enumeration completed
+```
+
+### ➡️ Use case: Scan a wide range quickly
+
+```bash
+is-responding -u "https://example.org/{{integer}}" -f 1 -t 5000 --concurrency 25
 ```
 
 ### ➡️ Use case: Give up on slow endpoints faster
 
 ```bash
 is-responding -u "https://example.org/{{integer}}" --timeout 2000
-```
-
-### ➡️ Use case: Save the responding endpoints to a file
-
-Progress is animated only when the output is a terminal, so a redirected run stays clean and greppable.
-
-```bash
-is-responding -u "https://example.org/{{integer}}" -f 1 -t 500 > alive.txt
 ```
 
 ## API
@@ -194,13 +239,14 @@ const result = await start({
   verbose: false,
   timeout: 10000,
   pad: 0,
+  concurrency: 5,
 });
 
 console.log(result.responding); // ['https://example.org/7', ...]
 console.log(result.checked); // 20
 ```
 
-`start()` resolves once every endpoint has been checked, and returns `null` when the URL template was invalid.
+`start()` resolves once every endpoint has been checked. It returns `{ responding, checked }`, or `null` when the URL template could not be enumerated.
 
 ## Related
 
