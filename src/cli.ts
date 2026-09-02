@@ -5,14 +5,15 @@ import { start } from './index';
 const { version } = require('../package.json');
 
 const HELP_TEXT = `Options:
-  --version      Show version number                                   [boolean]
-  --url, -u      URL with {{parameter}}                               [required]
-  --from, -f     Provide an initial value from count should start   [default: 0]
-  --to, -t       Provide an last value when count ends             [default: 10]
-  --pad, -p      Pad values with leading zeros, e.g. 3 gives 007      [default: 0]
-  --timeout      Milliseconds before a request is abandoned       [default: 10000]
-  --verbose, -v  Display endpoints which refused
-  --help         Show help                                             [boolean]`;
+  --version          Show version number                               [boolean]
+  --url, -u          URL with {{parameter}}                           [required]
+  --from, -f         Value the enumeration starts at                [default: 0]
+  --to, -t           Value the enumeration ends at                 [default: 10]
+  --pad, -p          Pad values with leading zeros, 3 gives 007     [default: 0]
+  --concurrency, -c  Requests kept in flight at once                [default: 5]
+  --timeout          Milliseconds before a request is abandoned [default: 10000]
+  --verbose, -v      Display endpoints which refused
+  --help             Show help                                         [boolean]`;
 
 /**
  * Parse a CLI argument that has to be a whole number, reporting a bad value.
@@ -41,12 +42,14 @@ export async function main(): Promise<void> {
       t: 'to',
       v: 'verbose',
       p: 'pad',
+      c: 'concurrency',
     },
     default: {
       from: '0',
       to: '10',
       pad: '0',
       timeout: '10000',
+      concurrency: '5',
     },
   });
 
@@ -76,8 +79,15 @@ Please provide url argument to work with this tool`);
   const to = parseInteger('to', argv.to);
   const pad = parseInteger('pad', argv.pad);
   const timeout = parseInteger('timeout', argv.timeout);
+  const concurrency = parseInteger('concurrency', argv.concurrency);
 
-  if (from === null || to === null || pad === null || timeout === null) {
+  if (
+    from === null ||
+    to === null ||
+    pad === null ||
+    timeout === null ||
+    concurrency === null
+  ) {
     process.exitCode = 1;
     return;
   }
@@ -102,6 +112,12 @@ Please provide url argument to work with this tool`);
     return;
   }
 
+  if (concurrency < 1) {
+    console.log(`Option "concurrency" must be at least 1, got: ${concurrency}`);
+    process.exitCode = 1;
+    return;
+  }
+
   const result = await start({
     url: argv.url,
     from,
@@ -109,6 +125,7 @@ Please provide url argument to work with this tool`);
     verbose: Boolean(argv.verbose),
     pad,
     timeout,
+    concurrency,
   });
 
   // Nothing to report means either a rejected template or a silent range.

@@ -12,6 +12,7 @@ import {
 
 const DEFAULT_DELAY = 50;
 const DEFAULT_TIMEOUT = 10000;
+const DEFAULT_CONCURRENCY = 5;
 
 export interface StartOptions {
   url: string;
@@ -24,6 +25,8 @@ export interface StartOptions {
   timeout?: number;
   /** Pad values with leading zeros up to this width, e.g. 3 gives `007`. */
   pad?: number;
+  /** How many requests may be in flight at once. */
+  concurrency?: number;
 }
 
 /**
@@ -139,6 +142,7 @@ async function test(
   delayTime: number,
   timeout: number,
   pad: number,
+  concurrency: number,
 ): Promise<StartResult> {
   console.log(cyan('🚀 Enumeration started...'));
 
@@ -154,22 +158,35 @@ async function test(
   const ranges = generators.map((factory) => collectValues(factory(from, to)));
   const combinations = cartesian(ranges);
 
-  for (const combo of combinations) {
-    const labels = combo.map((value) => formatValue(value, pad));
-    const compiledUrl = applyParams(url, labels);
-    await delay(delayTime);
-    checked++;
-    const isUp = await isServerRespond(
-      compiledUrl,
-      labels[labels.length - 1] ?? '',
-      labelWidth,
-      verbose,
-      timeout,
-    );
-    if (isUp) {
-      responding.push(compiledUrl);
-    }
-  }
+  // Workers pull from a shared cursor, so a slow endpoint holds up only its
+  // own slot instead of the whole run.
+  let cursor = 0;
+  const workers = Array.from(
+    { length: Math.min(concurrency, combinations.length) },
+    async () => {
+      while (cursor < combinations.length) {
+        const combo = combinations[cursor++];
+        const labels = combo.map((value) => formatValue(value, pad));
+        const compiledUrl = applyParams(url, labels);
+        if (delayTime > 0) {
+          await delay(delayTime);
+        }
+        checked++;
+        const isUp = await isServerRespond(
+          compiledUrl,
+          labels[labels.length - 1] ?? '',
+          labelWidth,
+          verbose,
+          timeout,
+        );
+        if (isUp) {
+          responding.push(compiledUrl);
+        }
+      }
+    },
+  );
+
+  await Promise.all(workers);
 
   console.log(cyan('✅ Enumeration completed'));
   return { responding, checked };
@@ -189,6 +206,7 @@ export async function start({
   delay: delayTime = DEFAULT_DELAY,
   timeout = DEFAULT_TIMEOUT,
   pad = 0,
+  concurrency = DEFAULT_CONCURRENCY,
 }: StartOptions): Promise<StartResult | null> {
   const params = getParams(url);
   if (params.length === 0) {
@@ -227,5 +245,15 @@ export async function start({
     return null;
   }
 
-  return test(url, from, to, verbose, generators, delayTime, timeout, pad);
+  return test(
+    url,
+    from,
+    to,
+    verbose,
+    generators,
+    delayTime,
+    timeout,
+    pad,
+    concurrency,
+  );
 }
