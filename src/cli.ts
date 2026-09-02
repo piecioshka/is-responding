@@ -4,7 +4,9 @@ import { start } from './index';
 
 const { version } = require('../package.json');
 
-const HELP_TEXT = `Options:
+const HELP_TEXT = `Usage: is-responding -u <url with {{integer}}> [options]
+
+Options:
   --version          Show version number                               [boolean]
   --url, -u          URL with {{parameter}}                           [required]
   --from, -f         Value the enumeration starts at                [default: 0]
@@ -13,7 +15,27 @@ const HELP_TEXT = `Options:
   --concurrency, -c  Requests kept in flight at once                [default: 5]
   --timeout          Milliseconds before a request is abandoned [default: 10000]
   --verbose, -v      Display endpoints which refused
-  --help             Show help                                         [boolean]`;
+  --help             Show help                                         [boolean]
+
+Examples:
+  Scan a range of ids
+    is-responding -u "https://example.org/invoice/{{integer}}" -f 1000 -t 1100
+
+  Show why endpoints were skipped
+    is-responding -u "https://example.org/{{integer}}" -f 1 -t 50 --verbose
+
+  Fixed-width numbers, so 7 becomes 007
+    is-responding -u "https://example.org/photo/{{integer}}.jpg" -t 999 --pad 3
+
+  Scan a wide range faster
+    is-responding -u "https://example.org/{{integer}}" -t 5000 --concurrency 25
+
+  Keep the output in range order
+    is-responding -u "https://example.org/{{integer}}" -t 100 --concurrency 1
+
+Exit codes:
+  0  at least one endpoint responded
+  1  nothing responded, or the arguments were invalid`;
 
 /**
  * Parse a CLI argument that has to be a whole number, reporting a bad value.

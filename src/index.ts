@@ -1,4 +1,4 @@
-import { red, green, cyan } from 'colors/safe';
+import { red, green, cyan, gray, bold } from 'colors/safe';
 import request from 'superagent';
 
 import { delay } from './helper';
@@ -37,6 +37,39 @@ export interface StartResult {
   responding: string[];
   /** Number of endpoints that were checked. */
   checked: number;
+  /** Endpoints that refused or timed out. */
+  silent: number;
+  /** Wall-clock time of the run, in milliseconds. */
+  elapsed: number;
+  /** How many times each status (or failure reason) was seen. */
+  statuses: Record<string, number>;
+}
+
+const BAR_WIDTH = 24;
+
+/**
+ * Draw a fixed-width progress bar for `done` out of `total`.
+ */
+export function renderBar(done: number, total: number, width: number): string {
+  const ratio = total > 0 ? Math.min(done / total, 1) : 1;
+  const filled = Math.round(ratio * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+
+/**
+ * Render a duration the way a person reads it: milliseconds below a second,
+ * one decimal below a minute, minutes and seconds above.
+ */
+export function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${Math.round(ms)}ms`;
+  }
+  if (ms < 60000) {
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.round((ms % 60000) / 1000);
+  return `${minutes}m ${seconds}s`;
 }
 
 /**
@@ -64,50 +97,45 @@ function formatValue(value: number, pad: number): string {
 /**
  * Read a property from an unknown error in a type-safe way.
  */
-function readErrorProp(err: unknown, key: string): string {
+function readErrorProp(err: unknown, key: string): string | undefined {
   if (typeof err === 'object' && err !== null && key in err) {
-    return String(Reflect.get(err, key));
+    const value = Reflect.get(err, key);
+    return value === undefined ? undefined : String(value);
   }
-  return 'undefined';
+  return undefined;
+}
+
+/**
+ * Outcome of probing a single endpoint.
+ */
+interface Probe {
+  ok: boolean;
+  /** Status code, or the reason it never produced one. */
+  status: string;
 }
 
 async function isServerRespond(
   url: string,
-  label: string,
-  width: number,
   verbose: boolean,
   timeout: number,
-): Promise<boolean> {
-  const prefix = label.padStart(width);
-  const progress = `[${prefix}] ${url} ...`;
-
-  // A redirected stream has no cursor to rewind, so the transient progress
-  // line would be left behind as noise in the file or pipe.
-  const isInteractive = Boolean(process.stdout.isTTY);
-  if (isInteractive) {
-    log(progress);
-  }
-
+  redraw: (line: string) => void,
+): Promise<Probe> {
   try {
     // superagent takes both budgets; cap the first response at the deadline.
     const res = await request.head(url).timeout({
       response: timeout,
       deadline: timeout,
     });
-    const done = `[${prefix}] ${url} ${green(String(res.status))}: ${green(url)}\n`;
-    log(isInteractive ? `\r${done}` : done);
-    return true;
+    redraw(`${green('✓')} ${green(String(res.status))}  ${url}\n`);
+    return { ok: true, status: String(res.status) };
   } catch (err) {
+    const status = readErrorProp(err, 'status');
+    const message = readErrorProp(err, 'message') ?? 'no response';
     if (verbose) {
-      const status = readErrorProp(err, 'status');
-      const message = readErrorProp(err, 'message');
-      const failed = `[${prefix}] ${url} \t\t${red(`${status}: ${message}`)}\n`;
-      log(isInteractive ? `\r${failed}` : failed);
-    } else if (isInteractive) {
-      // Wipe the progress line so a silent endpoint leaves no trace.
-      log(`\r${' '.repeat(progress.length)}\r`);
+      const reason = status ? `${status} ${message}` : message;
+      redraw(`${red('✗')} ${red(reason)}  ${gray(url)}\n`);
     }
-    return false;
+    return { ok: false, status: status ?? 'no response' };
   }
 }
 
@@ -144,52 +172,108 @@ async function test(
   pad: number,
   concurrency: number,
 ): Promise<StartResult> {
-  console.log(cyan('🚀 Enumeration started...'));
-
-  const responding: string[] = [];
-  let checked = 0;
-
-  // Align the counter column against the widest label in the range.
-  const labelWidth = Math.max(
-    formatValue(from, pad).length,
-    formatValue(to, pad).length,
-  );
-
   const ranges = generators.map((factory) => collectValues(factory(from, to)));
   const combinations = cartesian(ranges);
+  const total = combinations.length;
 
-  // Workers pull from a shared cursor, so a slow endpoint holds up only its
-  // own slot instead of the whole run.
+  console.log(
+    cyan(
+      `Scanning ${total} endpoint${total === 1 ? '' : 's'} ` +
+        `with ${concurrency} parallel request${concurrency === 1 ? '' : 's'}`,
+    ),
+  );
+
+  const responding: string[] = [];
+  const statuses: Record<string, number> = {};
+  let checked = 0;
+  const startedAt = Date.now();
+
+  // A redirected stream has no cursor to rewind, so the bar would be left
+  // behind as noise in the file or pipe.
+  const interactive = Boolean(process.stdout.isTTY);
+  let barLength = 0;
+
+  const drawBar = () => {
+    if (!interactive) {
+      return;
+    }
+    const percent = total > 0 ? Math.round((checked / total) * 100) : 100;
+    const line = `  ${renderBar(checked, total, BAR_WIDTH)} ${checked}/${total} (${percent}%)`;
+    barLength = line.length;
+    log(`\r${line}`);
+  };
+
+  // Results and the bar share one line, so a result has to wipe the bar
+  // before printing and put it back afterwards.
+  const redraw = (text: string) => {
+    if (interactive) {
+      log(`\r${' '.repeat(barLength)}\r`);
+    }
+    log(text);
+  };
+
+  drawBar();
+
   let cursor = 0;
   const workers = Array.from(
-    { length: Math.min(concurrency, combinations.length) },
+    { length: Math.min(concurrency, total) },
     async () => {
-      while (cursor < combinations.length) {
+      while (cursor < total) {
         const combo = combinations[cursor++];
         const labels = combo.map((value) => formatValue(value, pad));
         const compiledUrl = applyParams(url, labels);
         if (delayTime > 0) {
           await delay(delayTime);
         }
-        checked++;
-        const isUp = await isServerRespond(
+        const probe = await isServerRespond(
           compiledUrl,
-          labels[labels.length - 1] ?? '',
-          labelWidth,
           verbose,
           timeout,
+          redraw,
         );
-        if (isUp) {
+        checked++;
+        statuses[probe.status] = (statuses[probe.status] ?? 0) + 1;
+        if (probe.ok) {
           responding.push(compiledUrl);
         }
+        drawBar();
       }
     },
   );
 
   await Promise.all(workers);
 
-  console.log(cyan('✅ Enumeration completed'));
-  return { responding, checked };
+  // Wipe the bar for good; the summary speaks for the finished run.
+  if (interactive) {
+    log(`\r${' '.repeat(barLength)}\r`);
+  }
+
+  const elapsed = Date.now() - startedAt;
+  const silent = checked - responding.length;
+  const rate = elapsed > 0 ? (checked / elapsed) * 1000 : checked;
+
+  console.log(
+    `\nChecked ${bold(String(checked))} endpoint${checked === 1 ? '' : 's'} ` +
+      `in ${bold(formatDuration(elapsed))} (${rate.toFixed(1)}/s)`,
+  );
+  console.log(
+    `Found ${green(`${responding.length} responding`)}, ` +
+      `${gray(`${silent} silent`)}`,
+  );
+
+  const breakdown = Object.entries(statuses).sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+  );
+  if (breakdown.length > 0) {
+    console.log('\nStatus breakdown:');
+    for (const [status, count] of breakdown) {
+      const isOk = /^[23]\d\d$/.test(status);
+      const label = status.padEnd(12);
+      console.log(`  ${isOk ? green(label) : gray(label)} ${count}`);
+    }
+  }
+
+  return { responding, checked, silent, elapsed, statuses };
 }
 
 /**

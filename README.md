@@ -50,6 +50,8 @@ is-responding --help
 ```
 
 ```text
+Usage: is-responding -u <url with {{integer}}> [options]
+
 Options:
   --version          Show version number                               [boolean]
   --url, -u          URL with {{parameter}}                           [required]
@@ -60,6 +62,26 @@ Options:
   --timeout          Milliseconds before a request is abandoned [default: 10000]
   --verbose, -v      Display endpoints which refused
   --help             Show help                                         [boolean]
+
+Examples:
+  Scan a range of ids
+    is-responding -u "https://example.org/invoice/{{integer}}" -f 1000 -t 1100
+
+  Show why endpoints were skipped
+    is-responding -u "https://example.org/{{integer}}" -f 1 -t 50 --verbose
+
+  Fixed-width numbers, so 7 becomes 007
+    is-responding -u "https://example.org/photo/{{integer}}.jpg" -t 999 --pad 3
+
+  Scan a wide range faster
+    is-responding -u "https://example.org/{{integer}}" -t 5000 --concurrency 25
+
+  Keep the output in range order
+    is-responding -u "https://example.org/{{integer}}" -t 100 --concurrency 1
+
+Exit codes:
+  0  at least one endpoint responded
+  1  nothing responded, or the arguments were invalid
 ```
 
 ## Options
@@ -138,6 +160,38 @@ Raise it to finish sooner, lower it to go easy on the service. `--concurrency 1`
 
 <!-- prettier-ignore-end -->
 
+### Reading the output
+
+While the scan runs, a progress bar tracks how far it has got. It lives on a single line and is wiped when the run ends, so it never pollutes the results.
+
+```text
+  ████████████░░░░░░░░░░░░ 4/8 (50%)
+```
+
+Every line that survives is a finding, which keeps the output greppable and safe to redirect.
+
+| Line               | Meaning                                                 |
+| ------------------ | ------------------------------------------------------- |
+| `✓ 200  <url>`     | The endpoint answered, with the status it returned      |
+| `✗ <reason> <url>` | The endpoint refused or timed out, shown only with `-v` |
+
+The run closes with a summary: how many endpoints were checked, how long it took, the throughput, the split between responding and silent, and how often each status came back.
+
+```text
+Checked 8 endpoints in 1.9s (4.1/s)
+Found 6 responding, 2 silent
+
+Status breakdown:
+  no response  2
+  200          1
+  201          1
+  202          1
+```
+
+Durations are rendered as `842ms` below a second, `2.4s` below a minute and `1m 35s` above. `no response` covers the endpoints that never produced a status at all, such as a connection reset or a timeout.
+
+The bar and the summary are written only when the output is a terminal; a redirected run emits the result lines and nothing else.
+
 ### Leading zeros
 
 Some services expect a fixed-width number, like `/photo/007.jpg`. Use `--pad` (`-p`) to set that width:
@@ -182,35 +236,53 @@ fi
 ### ➡️ Use case: Find the live endpoints in a range
 
 ```bash
-is-responding -u "https://httpbin.org/status/{{integer}}" -f 200 -t 204
+is-responding -u "https://httpbin.org/status/{{integer}}" -f 198 -t 205
 ```
 
 ```text
-🚀 Enumeration started...
-[200] https://httpbin.org/status/200 200: https://httpbin.org/status/200
-[201] https://httpbin.org/status/201 201: https://httpbin.org/status/201
-[202] https://httpbin.org/status/202 202: https://httpbin.org/status/202
-[203] https://httpbin.org/status/203 203: https://httpbin.org/status/203
-[204] https://httpbin.org/status/204 204: https://httpbin.org/status/204
-✅ Enumeration completed
-```
+Scanning 8 endpoints with 5 parallel requests
+✓ 200  https://httpbin.org/status/200
+✓ 201  https://httpbin.org/status/201
+✓ 202  https://httpbin.org/status/202
+✓ 203  https://httpbin.org/status/203
+✓ 204  https://httpbin.org/status/204
+✓ 205  https://httpbin.org/status/205
 
-Each line shows the enumerated value in brackets, the address that was probed, and the status it answered with.
+Checked 8 endpoints in 1.9s (4.1/s)
+Found 6 responding, 2 silent
+
+Status breakdown:
+  no response  2
+  200          1
+  201          1
+  202          1
+  203          1
+  204          1
+  205          1
+```
 
 ### ➡️ Use case: See why endpoints were skipped
 
-Without `--verbose` a silent endpoint leaves no trace. Add `-v` to print the failures too, with their status and message.
+Without `--verbose` a silent endpoint leaves no trace. Add `-v` to print the misses too, with the reason each one gave.
 
 ```bash
-is-responding -u "https://httpbin.org/status/{{integer}}" -f 198 -t 200 -v
+is-responding -u "https://httpbin.org/status/{{integer}}" -f 198 -t 201 -v
 ```
 
 ```text
-🚀 Enumeration started...
-[198] https://httpbin.org/status/198 		undefined: socket hang up
-[199] https://httpbin.org/status/199 		undefined: socket hang up
-[200] https://httpbin.org/status/200 200: https://httpbin.org/status/200
-✅ Enumeration completed
+Scanning 4 endpoints with 5 parallel requests
+✗ socket hang up  https://httpbin.org/status/199
+✗ socket hang up  https://httpbin.org/status/198
+✓ 200  https://httpbin.org/status/200
+✓ 201  https://httpbin.org/status/201
+
+Checked 4 endpoints in 748ms (5.3/s)
+Found 2 responding, 2 silent
+
+Status breakdown:
+  no response  2
+  200          1
+  201          1
 ```
 
 ### ➡️ Use case: Scan a wide range quickly
@@ -244,9 +316,12 @@ const result = await start({
 
 console.log(result.responding); // ['https://example.org/7', ...]
 console.log(result.checked); // 20
+console.log(result.silent); // 19
+console.log(result.elapsed); // 2417 (milliseconds)
+console.log(result.statuses); // { '200': 1, 'no response': 19 }
 ```
 
-`start()` resolves once every endpoint has been checked. It returns `{ responding, checked }`, or `null` when the URL template could not be enumerated.
+`start()` resolves once every endpoint has been checked. It returns `{ responding, checked, silent, elapsed, statuses }`, or `null` when the URL template could not be enumerated.
 
 ## Related
 
