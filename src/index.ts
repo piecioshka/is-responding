@@ -51,6 +51,8 @@ export interface StartResult {
 
 const BAR_WIDTH = 24;
 const BREAKDOWN_LIMIT = 10;
+// How long an interrupted run waits for the requests already in flight.
+const ABORT_GRACE_MS = 250;
 
 /**
  * Draw a fixed-width progress bar for `done` out of `total`.
@@ -237,6 +239,9 @@ async function test(
           timeout,
           redraw,
         );
+
+        // Book the outcome in one go, so a report racing the workers never
+        // sees a hit that has not been counted yet.
         checked++;
         statuses[probe.status] = (statuses[probe.status] ?? 0) + 1;
         if (probe.ok) {
@@ -247,7 +252,24 @@ async function test(
     },
   );
 
-  await Promise.all(workers);
+  // An interrupted run must not hang on a request that may never settle, so
+  // give the in-flight ones a brief grace period and then report regardless.
+  // Whatever they book before the deadline still makes it into the summary.
+  const drained = Promise.all(workers);
+  if (signal) {
+    const interruptedEarly = new Promise<void>((resolve) => {
+      if (signal.aborted) {
+        resolve();
+        return;
+      }
+      signal.addEventListener('abort', () => resolve(), { once: true });
+    }).then(() =>
+      Promise.race([drained, delay(ABORT_GRACE_MS)]).then(() => undefined),
+    );
+    await Promise.race([drained, interruptedEarly]);
+  } else {
+    await drained;
+  }
 
   // Wipe the bar for good; the summary speaks for the finished run.
   if (interactive) {

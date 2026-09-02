@@ -213,4 +213,38 @@ describe('interrupt', () => {
     expect(result?.interrupted).toBe(false);
     expect(readOutput()).not.toMatch(/[Ii]nterrupted/);
   });
+
+  it('reports at once, without waiting for in-flight requests', async () => {
+    const controller = new AbortController();
+    let settleHanging = () => {};
+
+    // The first request never settles, like a server that stopped answering.
+    head.mockImplementationOnce(() => ({
+      timeout: () =>
+        new Promise((resolve) => {
+          settleHanging = () => resolve({ status: 200 });
+        }),
+    }));
+    respondWith({ status: 200 });
+
+    const run = start({
+      url: 'https://example.org/{{integer}}',
+      from: 1,
+      to: 100,
+      verbose: false,
+      delay: 0,
+      concurrency: 5,
+      signal: controller.signal,
+    });
+
+    await vi.waitFor(() => expect(head.mock.calls.length).toBeGreaterThan(1));
+    controller.abort();
+
+    // Resolves even though one request is still outstanding.
+    const result = await run;
+    expect(result?.interrupted).toBe(true);
+    expect(readOutput()).toMatch(/[Ii]nterrupted/);
+
+    settleHanging();
+  });
 });
