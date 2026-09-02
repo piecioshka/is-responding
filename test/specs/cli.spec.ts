@@ -99,4 +99,27 @@ describe('cli: main', () => {
       }),
     );
   });
+
+  it('rejects a negative --pad', async () => {
+    // `--pad -2` would be read as separate flags, so the value is attached.
+    await runWith(['-u', 'https://example.org/{{integer}}', '--pad=-2']);
+
+    expect(start).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('rejects a fractional --pad', async () => {
+    await runWith(['-u', 'https://example.org/{{integer}}', '--pad', '2.5']);
+
+    expect(start).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('passes --pad through to start', async () => {
+    start.mockResolvedValue({ responding: ['x'], checked: 1 });
+
+    await runWith(['-u', 'https://example.org/{{integer}}', '-p', '3']);
+
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({ pad: 3 }));
+  });
 });
