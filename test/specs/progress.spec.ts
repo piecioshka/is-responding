@@ -210,4 +210,44 @@ describe('status breakdown', () => {
       .filter(Boolean);
     expect(order).toEqual(['200', '500', '404']);
   });
+
+  it('caps a long breakdown and says how much was left out', async () => {
+    // 30 distinct statuses would otherwise print 30 lines.
+    respondSequence(Array.from({ length: 30 }, (_, i) => 400 + i));
+
+    await start({
+      url: 'https://example.org/{{integer}}',
+      from: 1,
+      to: 30,
+      verbose: false,
+      delay: 0,
+      concurrency: 1,
+    });
+
+    const breakdown = stdout.raw().split('Status breakdown:')[1] ?? '';
+    const rows = breakdown
+      .split('\n')
+      .filter((line) => /^\s+\S+\s+\d+$/.test(line));
+    expect(rows.length).toBeLessThanOrEqual(10);
+    expect(breakdown).toMatch(/\d+ more/);
+  });
+
+  it('lists every status when the breakdown is short', async () => {
+    respondSequence([200, 404, 500]);
+
+    await start({
+      url: 'https://example.org/{{integer}}',
+      from: 1,
+      to: 3,
+      verbose: false,
+      delay: 0,
+      concurrency: 1,
+    });
+
+    const breakdown = stdout.raw().split('Status breakdown:')[1] ?? '';
+    expect(breakdown).not.toMatch(/more/);
+    expect(breakdown).toContain('200');
+    expect(breakdown).toContain('404');
+    expect(breakdown).toContain('500');
+  });
 });
