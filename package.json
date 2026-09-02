@@ -81,6 +81,7 @@
   },
   "auto-changelog": {
     "commitLimit": false,
-    "output": "CHANGELOG.md"
+    "backfillLimit": false,
+    "hideCredit": true
   }
 }
