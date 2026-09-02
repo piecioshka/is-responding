@@ -9,25 +9,44 @@ const HELP_TEXT = `Options:
   --url, -u      URL with {{parameter}}                               [required]
   --from, -f     Provide an initial value from count should start   [default: 0]
   --to, -t       Provide an last value when count ends             [default: 10]
+  --pad, -p      Pad values with leading zeros, e.g. 3 gives 007      [default: 0]
+  --timeout      Milliseconds before a request is abandoned       [default: 10000]
   --verbose, -v  Display endpoints which refused
   --help         Show help                                             [boolean]`;
 
 /**
+ * Parse a CLI argument that has to be a whole number, reporting a bad value.
+ */
+function parseInteger(name: string, raw: unknown): number | null {
+  const value = Number(raw);
+  if (!Number.isInteger(value)) {
+    console.log(`Option "${name}" must be an integer, got: ${String(raw)}`);
+    return null;
+  }
+  return value;
+}
+
+/**
  * Parse CLI arguments and run the enumeration.
+ *
+ * Sets a non-zero exit code when the input is invalid or nothing responded.
  */
 export async function main(): Promise<void> {
   const argv = minimist(process.argv.slice(2), {
-    string: ['url'],
+    string: ['url', 'from', 'to', 'pad', 'timeout'],
     boolean: ['help', 'version', 'verbose'],
     alias: {
       u: 'url',
       f: 'from',
       t: 'to',
       v: 'verbose',
+      p: 'pad',
     },
     default: {
-      from: 0,
-      to: 10,
+      from: '0',
+      to: '10',
+      pad: '0',
+      timeout: '10000',
     },
   });
 
@@ -53,27 +72,47 @@ Please provide url argument to work with this tool`);
     return;
   }
 
-  const from = Number(argv.from);
-  const to = Number(argv.to);
-  if (!Number.isInteger(from) || !Number.isInteger(to)) {
-    console.log('--from and --to must be integers');
-    process.exitCode = 1;
-    return;
-  }
-  if (from > to) {
-    console.log(`--from (${from}) must be less than or equal to --to (${to})`);
+  const from = parseInteger('from', argv.from);
+  const to = parseInteger('to', argv.to);
+  const pad = parseInteger('pad', argv.pad);
+  const timeout = parseInteger('timeout', argv.timeout);
+
+  if (from === null || to === null || pad === null || timeout === null) {
     process.exitCode = 1;
     return;
   }
 
-  try {
-    await start({
-      url: argv.url,
-      from,
-      to,
-      verbose: Boolean(argv.verbose),
-    });
-  } catch {
+  if (from > to) {
+    console.log(
+      `Option "from" (${from}) must not be greater than "to" (${to})`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  if (pad < 0) {
+    console.log(`Option "pad" must not be negative, got: ${pad}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (timeout <= 0) {
+    console.log(`Option "timeout" must be positive, got: ${timeout}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const result = await start({
+    url: argv.url,
+    from,
+    to,
+    verbose: Boolean(argv.verbose),
+    pad,
+    timeout,
+  });
+
+  // Nothing to report means either a rejected template or a silent range.
+  if (result === null || result.responding.length === 0) {
     process.exitCode = 1;
   }
 }
