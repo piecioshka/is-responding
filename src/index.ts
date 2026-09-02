@@ -1,4 +1,4 @@
-import { red, green, cyan, gray, bold } from 'colors/safe';
+import { red, green, cyan, gray, bold, yellow } from 'colors/safe';
 import request from 'superagent';
 
 import { delay } from './helper';
@@ -27,6 +27,8 @@ export interface StartOptions {
   pad?: number;
   /** How many requests may be in flight at once. */
   concurrency?: number;
+  /** Stops the scan early, keeping whatever has been found so far. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -43,9 +45,12 @@ export interface StartResult {
   elapsed: number;
   /** How many times each status (or failure reason) was seen. */
   statuses: Record<string, number>;
+  /** True when the scan stopped before reaching the end of the range. */
+  interrupted: boolean;
 }
 
 const BAR_WIDTH = 24;
+const BREAKDOWN_LIMIT = 10;
 
 /**
  * Draw a fixed-width progress bar for `done` out of `total`.
@@ -171,6 +176,7 @@ async function test(
   timeout: number,
   pad: number,
   concurrency: number,
+  signal: AbortSignal | undefined,
 ): Promise<StartResult> {
   const ranges = generators.map((factory) => collectValues(factory(from, to)));
   const combinations = cartesian(ranges);
@@ -218,7 +224,7 @@ async function test(
   const workers = Array.from(
     { length: Math.min(concurrency, total) },
     async () => {
-      while (cursor < total) {
+      while (cursor < total && !signal?.aborted) {
         const combo = combinations[cursor++];
         const labels = combo.map((value) => formatValue(value, pad));
         const compiledUrl = applyParams(url, labels);
@@ -251,9 +257,16 @@ async function test(
   const elapsed = Date.now() - startedAt;
   const silent = checked - responding.length;
   const rate = elapsed > 0 ? (checked / elapsed) * 1000 : checked;
+  // A signal that lands after the last endpoint changed nothing.
+  const interrupted = Boolean(signal?.aborted) && checked < total;
+
+  if (interrupted) {
+    console.log(yellow(`\nInterrupted after ${checked} of ${total} endpoints`));
+  }
 
   console.log(
-    `\nChecked ${bold(String(checked))} endpoint${checked === 1 ? '' : 's'} ` +
+    `${interrupted ? '' : '\n'}Checked ${bold(String(checked))} ` +
+      `endpoint${checked === 1 ? '' : 's'} ` +
       `in ${bold(formatDuration(elapsed))} (${rate.toFixed(1)}/s)`,
   );
   console.log(
@@ -266,14 +279,20 @@ async function test(
   );
   if (breakdown.length > 0) {
     console.log('\nStatus breakdown:');
-    for (const [status, count] of breakdown) {
+    // A wide scan can turn up dozens of distinct statuses; showing them all
+    // would bury the summary, so only the most frequent ones are listed.
+    for (const [status, count] of breakdown.slice(0, BREAKDOWN_LIMIT)) {
       const isOk = /^[23]\d\d$/.test(status);
       const label = status.padEnd(12);
       console.log(`  ${isOk ? green(label) : gray(label)} ${count}`);
     }
+    const hidden = breakdown.length - BREAKDOWN_LIMIT;
+    if (hidden > 0) {
+      console.log(gray(`  ... and ${hidden} more`));
+    }
   }
 
-  return { responding, checked, silent, elapsed, statuses };
+  return { responding, checked, silent, elapsed, statuses, interrupted };
 }
 
 /**
@@ -291,6 +310,7 @@ export async function start({
   timeout = DEFAULT_TIMEOUT,
   pad = 0,
   concurrency = DEFAULT_CONCURRENCY,
+  signal,
 }: StartOptions): Promise<StartResult | null> {
   const params = getParams(url);
   if (params.length === 0) {
@@ -339,5 +359,6 @@ export async function start({
     timeout,
     pad,
     concurrency,
+    signal,
   );
 }

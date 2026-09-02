@@ -34,8 +34,11 @@ Examples:
     is-responding -u "https://example.org/{{integer}}" -t 100 --concurrency 1
 
 Exit codes:
-  0  at least one endpoint responded
-  1  nothing responded, or the arguments were invalid`;
+    0  at least one endpoint responded
+    1  nothing responded, or the arguments were invalid
+  130  the scan was interrupted with Ctrl+C
+
+Press Ctrl+C to stop early; the report covers whatever was scanned.`;
 
 /**
  * Parse a CLI argument that has to be a whole number, reporting a bad value.
@@ -140,6 +143,18 @@ Please provide url argument to work with this tool`);
     return;
   }
 
+  // Ctrl+C stops the scan but lets it print the same report as a full run.
+  // A second signal is left to the default handler, so the process can still
+  // be killed if a request refuses to settle.
+  const controller = new AbortController();
+  const onSignal = () => {
+    controller.abort();
+    process.off('SIGINT', onSignal);
+    process.off('SIGTERM', onSignal);
+  };
+  process.once('SIGINT', onSignal);
+  process.once('SIGTERM', onSignal);
+
   const result = await start({
     url: argv.url,
     from,
@@ -148,7 +163,17 @@ Please provide url argument to work with this tool`);
     pad,
     timeout,
     concurrency,
+    signal: controller.signal,
   });
+
+  process.off('SIGINT', onSignal);
+  process.off('SIGTERM', onSignal);
+
+  // 130 is the shell's convention for a run ended by Ctrl+C.
+  if (result?.interrupted) {
+    process.exitCode = 130;
+    return;
+  }
 
   // Nothing to report means either a rejected template or a silent range.
   if (result === null || result.responding.length === 0) {
