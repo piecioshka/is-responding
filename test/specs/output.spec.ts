@@ -158,8 +158,8 @@ describe('output: non-interactive stdout', () => {
     });
 
     expect(stdout.raw().split('\n').filter(Boolean)).toEqual([
-      '[1] https://example.org/1 200: https://example.org/1',
-      '[2] https://example.org/2 200: https://example.org/2',
+      '✓ 200  https://example.org/1',
+      '✓ 200  https://example.org/2',
     ]);
   });
 
@@ -175,5 +175,60 @@ describe('output: non-interactive stdout', () => {
     });
 
     expect(stdout.raw().trim()).toBe('');
+  });
+});
+
+describe('output: parallel progress', () => {
+  let stdout: Stdout;
+  const originalIsTTY = process.stdout.isTTY;
+
+  beforeEach(() => {
+    head.mockReset();
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    stdout = captureStdout();
+    process.stdout.isTTY = true;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.stdout.isTTY = originalIsTTY;
+  });
+
+  it('keeps every result on its own line when running in parallel', async () => {
+    respondWith({ status: 200 });
+
+    await start({
+      url: 'https://example.org/{{integer}}',
+      from: 1,
+      to: 4,
+      verbose: false,
+      delay: 0,
+      concurrency: 4,
+    });
+
+    // Workers never rewind the shared line themselves; only the bar does,
+    // so no result may end up spliced into another.
+    const results = stdout
+      .rendered()
+      .split('\n')
+      .filter((line) => line.includes('example.org'));
+    expect(results).toHaveLength(4);
+    // Trailing blanks are the wiped progress bar, not part of the result.
+    results.forEach((line) => expect(line.trimEnd()).toMatch(/^✓ 200 {2}\S+$/));
+  });
+
+  it('animates progress on a terminal', async () => {
+    respondWith({ status: 200 });
+
+    await start({
+      url: 'https://example.org/{{integer}}',
+      from: 1,
+      to: 3,
+      verbose: false,
+      delay: 0,
+      concurrency: 1,
+    });
+
+    expect(stdout.raw()).toContain('\r');
   });
 });
