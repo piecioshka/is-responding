@@ -69,39 +69,40 @@ A placeholder is written as `{{type}}` - double curly braces around a **supporte
 | ------------- | --------------------------------------------- | --------- |
 | `{{integer}}` | Every whole number from `--from` up to `--to` | ✅ Yes    |
 
-> [!IMPORTANT] `integer` is currently the **only** supported type, and the placeholder must be the type name itself. Invented names like `{{id}}`, `{{page}}` or `{{user}}` are rejected - the tool prints `"id" is not supported` and exits with code `1`.
+<!-- prettier-ignore-start -->
+
+> [!IMPORTANT]
+> `integer` is currently the **only** supported type, and the placeholder must be the type name itself. Invented names like `{{id}}`, `{{page}}` or `{{user}}` are rejected - the tool prints `"id" is not supported` and exits with code `1`.
+
+<!-- prettier-ignore-end -->
 
 A URL without any placeholder is rejected too, because there would be nothing to enumerate.
 
 ### Repeating a placeholder
 
-You can use `{{integer}}` more than once. Every occurrence receives **the same value** in a given step, so the values are duplicated - this is **not** a cartesian product of the range with itself.
+You can use `{{integer}}` more than once. Each occurrence is an **independent dimension**, so the run walks the cartesian product of the ranges - not one shared counter.
 
 ```bash
-is-responding -u "https://example.org/{{integer}}/photo/{{integer}}.jpg" -f 1 -t 4
+is-responding -u "https://example.org/{{integer}}/photo/{{integer}}.jpg" -f 1 -t 3
 ```
 
 ```text
 https://example.org/1/photo/1.jpg
-https://example.org/2/photo/2.jpg
+https://example.org/1/photo/2.jpg
+https://example.org/1/photo/3.jpg
+https://example.org/2/photo/1.jpg
+...
 https://example.org/3/photo/3.jpg
-https://example.org/4/photo/4.jpg
 ```
 
-Two placeholders side by side behave the same way - `{{integer}}{{integer}}` over `1..4` produces `11`, `22`, `33`, `44`, and never `12` or `21`:
+Two placeholders side by side behave the same way - `{{integer}}{{integer}}` over `1..4` produces `11`, `12`, `13`, `14`, `21`, `22`, ... `44`, so all 16 combinations, not just `11`, `22`, `33`, `44`.
 
-```bash
-is-responding -u "https://example.org/{{integer}}{{integer}}" -f 1 -t 4
-```
+<!-- prettier-ignore-start -->
 
-```text
-https://example.org/11
-https://example.org/22
-https://example.org/33
-https://example.org/44
-```
+> [!WARNING]
+> The number of requests is the range size raised to the number of placeholders. Two placeholders over `1..100` means 10 000 requests, three means 1 000 000. Keep the range small when repeating a placeholder.
 
-> [!NOTE] There is exactly one counter per run, so every combination of independent values (`11`, `12`, `13`, …) is out of scope. If you need that, run the tool once per outer value.
+<!-- prettier-ignore-end -->
 
 ### Leading zeros
 
