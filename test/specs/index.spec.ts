@@ -37,23 +37,23 @@ describe('index: start', () => {
     });
 
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining('There is no params in url')
+      expect.stringContaining('There is no params in url'),
     );
     expect(head).not.toHaveBeenCalled();
   });
 
   it('reports unsupported parameter types', async () => {
-    await expect(
-      start({
-        url: 'https://example.org/{{foo}}',
-        from: 0,
-        to: 10,
-        verbose: false,
-      })
-    ).rejects.toThrow('"foo" is not supported');
+    const result = await start({
+      url: 'https://example.org/{{foo}}',
+      from: 0,
+      to: 10,
+      verbose: false,
+    });
+
+    expect(result).toBeNull();
 
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining('"foo" is not supported')
+      expect.stringContaining('"foo" is not supported'),
     );
     expect(logSpy).toHaveBeenCalledWith('Supported types:', 'integer');
     expect(head).not.toHaveBeenCalled();
@@ -97,8 +97,26 @@ describe('index: start', () => {
   });
 
   it('rejects an invalid url template', async () => {
-    await expect(
-      start({ url: 'not a url {{integer}}', from: 0, to: 1, verbose: false })
-    ).rejects.toThrow('Invalid URL');
+    const result = await start({
+      url: 'not a url {{integer}}',
+      from: 0,
+      to: 1,
+      verbose: false,
+    });
+
+    expect(result).toBeNull();
+    expect(head).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-http protocol', async () => {
+    const result = await start({
+      url: 'ftp://example.org/{{integer}}',
+      from: 0,
+      to: 1,
+      verbose: false,
+    });
+
+    expect(result).toBeNull();
+    expect(head).not.toHaveBeenCalled();
   });
 });

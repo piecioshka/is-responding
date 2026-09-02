@@ -18,7 +18,7 @@ export const SUPPORTED_TYPES: Record<string, GeneratorFactory> = {
     let current = from;
     return {
       type: 'integer',
-      next() {
+      next(): number | null {
         if (current > to) {
           return null;
         }
@@ -36,15 +36,20 @@ export function getParams(url: string): string[] {
   if (!params) {
     return [];
   }
-  return params.map((param) => param.replace(PARAMS_REGEXP, '$1'));
+  return params.map((param) => param.slice(2, -2));
 }
 
 /**
  * Replace `{{parameter}}` placeholders in a URL, substituting each occurrence
  * (left to right) with the matching entry of `values`. Positional so a URL
  * with several placeholders of the same type gets distinct values.
+ *
+ * Values are inserted literally, so `$&` and friends carry no special meaning.
  */
-export function applyParams(url: string, values: Array<string | number>): string {
+export function applyParams(
+  url: string,
+  values: Array<string | number>,
+): string {
   let index = 0;
   return url.replace(PARAMS_REGEXP, () => String(values[index++] ?? ''));
 }
@@ -54,11 +59,10 @@ export function applyParams(url: string, values: Array<string | number>): string
  */
 function filterParams(params: string[]): string[] {
   return params.filter((param) => {
-    const status = SUPPORTED_TYPES[param];
-    if (!status) {
+    if (!SUPPORTED_TYPES[param]) {
       throw new Error(`"${param}" is not supported`);
     }
-    return Boolean(status);
+    return true;
   });
 }
 
